@@ -1,146 +1,150 @@
-#include <iostream>
-#include <iterator>
-#include <map>
-#include <cstdio>
-#include <iomanip>
-#include <vector>
-#include <utility>
+#include <cstdio>    // sprintf
+#include <iomanip>   // output formatting with setw
+#include <iostream>  // cout, cin, getline
+#include <iterator>  // map iterators with map<>::iterator
+#include <map>       // map type
+#include <tuple>     // tuple type
+#include <limits.h>  // INT_MAX
 
 using namespace std;
 
-#define OUTPUT_WIDTH 20
-#define MAX_SALARY_LEN 10 // Max length of the users input; salary cannot be more than n
-#define MIN_SALARY_VALUE 50000
-#define MAX_SALARY_VALUE 200000
+#define MIN_SALARY 15000
+#define MAX_SALARY INT_MAX
 
+/*
+Displays a tax bracket
+*/
+void display_tax_bracket(map<tuple<int, int>, float> tax_bracket) {
+  const int output_width = 20;
 
-void display_tax_bracket(map<string, float> tax_bracket)
-{
-    map<string, float>::iterator itr;
+  cout << "\n===== Tax Bracket =====" << endl;
+  cout << setw(output_width) << left << "Range" << setw(output_width) << "Tax %"
+       << endl;
 
-    cout << "===== Tax Bracket =====\n"
-         << endl;
-    cout << setw(OUTPUT_WIDTH) << left << "Range" << setw(OUTPUT_WIDTH) << "Value as %" << endl;
-    for (itr = tax_bracket.begin(); itr != tax_bracket.end(); ++itr)
-    {
-        cout << setw(OUTPUT_WIDTH) << left << itr->first << setw(OUTPUT_WIDTH) << itr->second << '\n';
-    }
-    cout << endl;
+  map<tuple<int, int>, float>::iterator itr;
+
+  for (itr = tax_bracket.begin(); itr != tax_bracket.end(); ++itr) {
+    tuple<int, int> tax_bracket_range = itr->first;
+    float tax_percentage = itr->second;
+    char str_tax_bracket_range[100];
+
+    sprintf(str_tax_bracket_range, "%d-%d", get<0>(tax_bracket_range),
+            get<1>(tax_bracket_range));
+
+    cout << setw(output_width) << left << str_tax_bracket_range
+         << setw(output_width) << tax_percentage << '\n';
+  }
+
+  cout << endl;
 }
 
-// Converts the users input; s_gross_salary into a float and then checks if the
-// resulting value is within the range MIN_SALARY_VALUE - MAX_SALARY_VALUE
-// Returns the converted float value if these conditions are met, -1 otherwise
-float validate_s_gross_salary(char s_gross_salary[MAX_SALARY_LEN])
-{
-    float gross_salary;
+/*
+Checks if a character is a numerical value
+*/
+bool is_integer(char _char) {
+  // All integers lie between the ASCII values 48 - 57
+  const int min_ascii_val = 48;
+  const int max_ascii_val = 57;
+  int ascii_val = _char;  // Convert char to its corresponding ASCII value
 
-    try
-    {
-        gross_salary = stof(s_gross_salary);
-        if (gross_salary < MIN_SALARY_VALUE || gross_salary > MAX_SALARY_VALUE)
-        {
-            gross_salary = -1;
-        }
-    }
-    catch (const exception &e)
-    {
-        // String provided was neither an int | float
-        gross_salary = -1;
-    }
-
-    return gross_salary;
+  return ascii_val >= min_ascii_val && ascii_val <= max_ascii_val;
 }
 
-// Splits a string using a specified delimiter and returns a vector of the 
-// first n floats within the string
-vector<float> first_n_floats_from_str(string str, char del = '-', int n = 2)
-{
-    vector<float> values;
+/*
+Validates that the salary input string is a number
+greater than or equal to MIN_SALARY and less than or equal
+to MAX_SALARY.
 
-    stringstream ss(str);
-    string word;
-    while (!ss.eof())
-    {
-        getline(ss, word, del);
+@returns A tuple<result, message>
+where result == float-value if validation is successful and -1 if validation
+failed and message is the success/error message
+*/
+tuple<float, string> validate_salary_input(string salary_input) {
+  char message[100];
+  const char* cstr_salary_input = salary_input.data();
 
-        try
-        {
-            float amount = stof(word);
-
-            // push_back() function ensures that the first float found in the
-            // string also appears first on the vector
-            values.push_back(amount); 
-        }
-        catch(const std::exception& e)
-        {
-            // word is not of type float; do nothing
-        }
-        
+  for (size_t i = 0; i < salary_input.size(); i++) {
+    if (!is_integer(salary_input[i])) {
+      sprintf(message, "%s is not a valid number", cstr_salary_input);
+      return make_tuple(-1, message);
     }
-    vector<float> n_values(values.begin(), values.begin() + n);
-    return n_values;
-}
+  }
 
-// Calculates the tax percentage that is allocatable to a given gross salary
-// based on the tax bracket
-float calc_tax_percentage(float gross_salary, map<string, float> tax_bracket)
-{
-    float tax_percentage = 1.0;
-
-    map<string, float>::iterator itr;
-
-    for (itr = tax_bracket.begin(); itr != tax_bracket.end(); ++itr)
-    {
-        vector<float> tax_bracket_values = first_n_floats_from_str(itr->first);
-
-        if(gross_salary > tax_bracket_values[0] && gross_salary <= tax_bracket_values[1]) {
-            tax_percentage = itr->second;
-            break;
-        }
+  try {
+    // stof converts strings to floats. Throws an exception if string
+    // cannot be converted to its corresponding float type
+    float result = stof(salary_input);
+    if (result < MIN_SALARY || result > MAX_SALARY) {
+      sprintf(message, "Please enter a basic salary between %d and %d",
+              MIN_SALARY, MAX_SALARY);
+      return make_tuple(-1, message);
     }
 
-    return tax_percentage;
+    return make_tuple(result, "");
+  } catch (const exception& e) {
+    sprintf(message, "stof failed to convert %s into a floating point number",
+            cstr_salary_input);
+    return make_tuple(-1, message);
+  }
 }
 
-// A program to compute taxes
-int main()
-{
-    float gross_salary, tax_percentage, tax_deductions, net_salary;
-    char s_gross_salary[MAX_SALARY_LEN], max_tax_bracket[100];
-    map<string, float> tax_bracket;
+/*
+Calculates the tax percentage that is allocatable to the 
+passed in basic salary based on the tax bracket it falls into
+*/
+float calc_tax_percentage(float basic_salary,
+                          map<tuple<int, int>, float> tax_bracket) {
+  float tax_percentage = 1.0;
 
-    // Defining the maximum tax bracket
-    sprintf(max_tax_bracket, "40000-%d", MAX_SALARY_VALUE);
+  map<tuple<int, int>, float>::iterator itr;
 
-    tax_bracket["0-20000"] = 0.05;
-    tax_bracket["20000-40000"] = 0.04;
-    tax_bracket[max_tax_bracket] = 0.02;
+  for (itr = tax_bracket.begin(); itr != tax_bracket.end(); ++itr) {
+    tuple<int, int> tax_bracket_range = itr->first;
+    if (basic_salary >= get<0>(tax_bracket_range) &&
+        basic_salary <= get<1>(tax_bracket_range)) {
+      tax_percentage = itr->second;
+      break;
+    }
+  }
 
-    display_tax_bracket(tax_bracket);
+  return tax_percentage;
+}
 
-    do
-    {
-        cout << "Enter your salary: ";
-        cin.getline(s_gross_salary, MAX_SALARY_LEN); 
+int main() {
+  float basic_salary, tax_percentage, tax_deductions, net_salary;
+  string salary_input;
 
-        gross_salary = validate_s_gross_salary(s_gross_salary);
-        if (gross_salary == -1)
-        {
-            cout << "Please enter a valid number between " << MIN_SALARY_VALUE
-                 << " and " << MAX_SALARY_VALUE << endl;
-        }
+  map<tuple<int, int>, float> tax_bracket;
+  tax_bracket[make_tuple(MIN_SALARY, 20000)] = 0.1;
+  tax_bracket[make_tuple(20000, 50000)] = 0.15;
+  tax_bracket[make_tuple(50000, MAX_SALARY)] = 0.3;
 
-    } while (gross_salary == -1);
+  display_tax_bracket(tax_bracket);
 
-    tax_percentage = calc_tax_percentage(gross_salary, tax_bracket);
-    tax_deductions = gross_salary * tax_percentage;
-    net_salary = gross_salary - tax_deductions;
+  do {
+    cout << "Enter your basic salary: ";
+    getline(cin, salary_input);
 
-    cout << "\n===== =====" << endl;
-    cout << "Gross salary: " << gross_salary << endl;
-    cout << "Tax deductions: " << tax_deductions << endl;
-    cout << "Net salary: " << net_salary << endl;
+    tuple<float, string> validation_result =
+        validate_salary_input(salary_input);
+    basic_salary = get<0>(validation_result);
+    string message = get<1>(validation_result);
 
-    return 0;
+    if (basic_salary == -1) {
+      cout << message << endl << endl;
+    }
+
+  } while (basic_salary == -1);
+
+  tax_percentage = calc_tax_percentage(basic_salary, tax_bracket);
+  tax_deductions = basic_salary * tax_percentage;
+  net_salary = basic_salary - tax_deductions;
+
+  cout << "\n===== Output =====" << endl;
+  cout << "Basic salary: " << basic_salary << " Ksh" << endl;
+  cout << "Tax %: " << tax_percentage << endl;
+  cout << "Tax deductions: -" << tax_deductions << " Ksh" << endl;
+  cout << "Net salary: " << net_salary << " Ksh" << endl;
+
+  return 0;
 }
