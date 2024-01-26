@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <iostream>
 #include <limits>
 
@@ -7,7 +8,7 @@ max limit
 */
 template <typename T>
 T input(std::string prompt, T min = std::numeric_limits<T>::lowest(),
-            T max = std::numeric_limits<T>::max()) {
+        T max = std::numeric_limits<T>::max()) {
   T n;
 
   while (true) {
@@ -38,3 +39,8 @@ T input(std::string prompt, T min = std::numeric_limits<T>::lowest(),
     std::cout << "Invalid entry. Please try again.\n\n";
   }
 }
+
+/*
+Asks the user a yes or no question
+*/
+bool yes_no_input(std::string prompt);
